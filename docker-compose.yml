@@ -1,0 +1,57 @@
+version: "3.9"
+
+services:
+  django:
+    build:
+      context: ..
+      dockerfile: ecommerce_docker/Dockerfile
+    container_name: ecommerce_api
+    command: gunicorn ecommerce.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - ../ecommerce:/app
+    env_file:
+      - .env
+    depends_on:
+      - mysql
+      - mailhog
+    expose:
+      - "8000"
+
+  mysql:
+    image: mysql:8.0
+    container_name: ecommerce_mysql
+    ports:
+      - "3306:3306"
+    restart: always
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: ecommerce_mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  nginx:
+    image: nginx:latest
+    container_name: ecommerce_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - django
+
+volumes:
+  mysql_data:
